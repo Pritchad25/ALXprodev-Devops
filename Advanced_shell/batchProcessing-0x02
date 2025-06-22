@@ -1,28 +1,38 @@
 #!/bin/bash
 
-# Create output directory if it doesn't exist
+# Output directory
 mkdir -p pokemon_data
 
-# List of Pokémon (case-insensitive, but API expects lowercase)
+# Pokémon list
 pokemon_list=("bulbasaur" "ivysaur" "venusaur" "charmander" "charmeleon")
 
 # Loop through each Pokémon
 for pokemon in "${pokemon_list[@]}"; do
-    echo "Fetching data for $pokemon..."
-    
-    # Make the request and save to a file named after the Pokémon
-    response=$(curl -s -w "%{http_code}" -o "pokemon_data/${pokemon}.json" "https://pokeapi.co/api/v2/pokemon/${pokemon}")
-    http_status="${response: -3}"
+	echo "Fetching data for $pokemon..."
 
-    if [ "$http_status" -eq 200 ]; then
-        echo "Saved data to pokemon_data/${pokemon}.json ✅"
-    else
-        echo "[ERROR] Failed to fetch data for $pokemon (HTTP $http_status)" >> errors.txt
-        rm -f "pokemon_data/${pokemon}.json"
-    fi
+	success=false
+	attempts=0
+	max_retries=3
 
-    # Respect the API — delay to avoid rate limits
-    sleep 2
+	while [ $attempts -lt $max_retries ]; do
+		response=$(curl -s -w "%{http_code}" -o "pokemon_data/${pokemon}.json" "https://pokeapi.co/api/v2/pokemon/${pokemon}")
+		http_status="${response: -3}"
+
+		if [ "$http_status" -eq 200 ]; then
+			echo "✅ Success on attempt $((attempts+1))"
+			success=true
+			break
+		else:
+			echo "⚠️ Attempt $((attempts+1)) failed with HTTP $http_status"
+			((attempts++))
+			sleep 2
+		fi
+	done
+
+	if [ "$success" = false ]; then
+		echo "[ERROR] Failed to fetch $pokemon after $max_retries attempts." >> errors.txt
+		rm -f "pokemon_data/${pokemon}.json"
+	fi
+
+	sleep 2  # Respectful pause between Pokémon
 done
-
-

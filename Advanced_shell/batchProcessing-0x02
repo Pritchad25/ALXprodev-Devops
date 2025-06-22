@@ -1,0 +1,28 @@
+#!/bin/bash
+
+# Create output directory if it doesn't exist
+mkdir -p pokemon_data
+
+# List of Pokémon (case-insensitive, but API expects lowercase)
+pokemon_list=("bulbasaur" "ivysaur" "venusaur" "charmander" "charmeleon")
+
+# Loop through each Pokémon
+for pokemon in "${pokemon_list[@]}"; do
+    echo "Fetching data for $pokemon..."
+    
+    # Make the request and save to a file named after the Pokémon
+    response=$(curl -s -w "%{http_code}" -o "pokemon_data/${pokemon}.json" "https://pokeapi.co/api/v2/pokemon/${pokemon}")
+    http_status="${response: -3}"
+
+    if [ "$http_status" -eq 200 ]; then
+        echo "Saved data to pokemon_data/${pokemon}.json ✅"
+    else
+        echo "[ERROR] Failed to fetch data for $pokemon (HTTP $http_status)" >> errors.txt
+        rm -f "pokemon_data/${pokemon}.json"
+    fi
+
+    # Respect the API — delay to avoid rate limits
+    sleep 2
+done
+
+
